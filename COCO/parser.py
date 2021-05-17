@@ -57,6 +57,7 @@ def make_img_dir(entries, split):
         img_name = img_name.replace('.fits', '.png')
         sample = line['img'].split('\\')[-3] # take sample name
         dst_path = os.path.join(args.dir, split, f"{sample}_{img_name}")
+        line['png_path'] = dst_path
         fits_to_png(line['img'], dst_path, contrast=args.contrast)
 
 def fits_to_png(file_path, dst_path, contrast=0.15):
@@ -96,8 +97,7 @@ def make_annotations(samples, split, incremental_id):
     for line in tqdm(samples):
 
         w, h = fits.getdata(line['img']).shape
-        png_filename = line['img'].replace('.fits', '.png')
-        image = {'id': incremental_id['img'], 'width': w, 'height': h, 'file_name': png_filename, 'annotations': [] }
+        image = {'id': incremental_id['img'], 'width': w, 'height': h, 'file_name': line['png_path'], 'annotations': [] }
         coco_samples['images'].append(image)
 
         for obj in line['objs']:
