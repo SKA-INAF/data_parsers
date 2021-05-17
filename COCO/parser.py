@@ -115,7 +115,7 @@ def make_annotations(samples, split, incremental_id):
             incremental_id.update({'obj': 1})
 
         incremental_id.update({'img': 1})
-    with open(os.path.join(args.dir, 'annotations' split), 'w') as out:
+    with open(os.path.join(args.dir, 'annotations', split), 'w') as out:
         print(f'Dumping data in file annotations/{split}')
         json.dump(coco_samples, out, indent=2, cls=NpEncoder)
 
@@ -133,7 +133,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     # File listing all json files that contain mask information
-    parser.add_argument("-m", "--masks", default="MLDataset_cleaned/trainset.dat", help="Path of file that lists all mask file paths")
+    parser.add_argument("-m", "--masks", default="trainset.dat", help="Path of file that lists all mask file paths")
 
     # Optional argument flag which defaults to False
     parser.add_argument("-d", "--dir", default="coco", help="Destination directory for converted data")
