@@ -3,10 +3,13 @@ from astropy.io import fits
 import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
+import torch
 import cv2
+from torchvision.utils import save_image
+
 from astropy.visualization import ZScaleInterval
 from collections import Counter
-import shutil
+
 import argparse
 
 CLASSES = {'galaxy': 1, 'source': 2, 'sidelobe': 3}
@@ -30,7 +33,7 @@ def train_val_split(trainset_path, train_ratio=0.8):
     samples = []
     with open(trainset_path) as f:
         for json_path in tqdm(f):
-            json_path = json_path.replace('/home/riggi/Data/MLData', os.path.join(os.path.abspath(os.getcwd())))
+            json_path = json_path.replace('/home/riggi/Data/MLData/MLDataset_cleaned', os.path.join(os.path.abspath(os.getcwd())))
             json_path = os.path.normpath(json_path).strip()
             with open(json_path, 'r') as label_json:
                 label = json.load(label_json)
@@ -50,9 +53,21 @@ def make_img_dir(entries, split):
     '''Copies images into train or val folder'''
     os.makedirs(os.path.join(args.dir, split), exist_ok=True)
     for line in entries:
-        img_name = line['img'].split('\\')[-1]
-        sample = line['img'].split('\\')[-3]
-        shutil.copy(line['img'], os.path.join(args.dir, split, f"{sample}_{img_name}"))
+        img_name = line['img'].split('\\')[-1] # take image name
+        img_name = img_name.replace('.fits', '.png')
+        sample = line['img'].split('\\')[-3] # take sample name
+        dst_path = os.path.join(args.dir, split, f"{sample}_{img_name}")
+        fits_to_png(line['img'], dst_path, contrast=args.contrast)
+
+def fits_to_png(file_path, dst_path, contrast=0.15):
+    
+    img = fits.getdata(file_path, ignore_missing_end=True)
+    interval = ZScaleInterval(contrast=contrast)
+    min, max = interval.get_limits(img)
+
+    img = (img-min)/(max-min)
+
+    save_image(torch.from_numpy(img), dst_path)
 
 def get_mask_coords(mask_path):
     '''Extracts coordinates from the mask image'''
@@ -135,8 +150,11 @@ if __name__ == '__main__':
     # File listing all json files that contain mask information
     parser.add_argument("-m", "--masks", default="trainset.dat", help="Path of file that lists all mask file paths")
 
-    # Optional argument flag which defaults to False
+    # Directory where all output files will be saved
     parser.add_argument("-d", "--dir", default="coco", help="Destination directory for converted data")
+
+    # Contrast value in conversion to PNG
+    parser.add_argument("-c", "--contrast", default=0.15, help="Contrast value for conversion to PNG")
 
     args = parser.parse_args()
     main(args)
