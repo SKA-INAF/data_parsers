@@ -96,7 +96,8 @@ def make_annotations(samples, split, incremental_id):
     for line in tqdm(samples):
 
         w, h = fits.getdata(line['img']).shape
-        image = {'id': incremental_id['img'], 'width': w, 'height': h, 'file_name': line['img'], 'annotations': [] }
+        png_filename = line['img'].replace('.fits', '.png')
+        image = {'id': incremental_id['img'], 'width': w, 'height': h, 'file_name': png_filename, 'annotations': [] }
         coco_samples['images'].append(image)
 
         for obj in line['objs']:
