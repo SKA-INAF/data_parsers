@@ -151,7 +151,7 @@ if __name__ == '__main__':
     parser.add_argument("-m", "--masks", default="trainset.dat", help="Path of file that lists all mask file paths")
 
     # Directory where all output files will be saved
-    parser.add_argument("-d", "--dir", default="coco", help="Destination directory for converted data")
+    parser.add_argument("-d", "--dir", default="radio-galaxy", help="Destination directory for converted data")
 
     # Contrast value in conversion to PNG
     parser.add_argument("-c", "--contrast", default=0.15, help="Contrast value for conversion to PNG")
