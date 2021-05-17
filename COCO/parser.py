@@ -30,7 +30,7 @@ def train_val_split(trainset_path, train_ratio=0.8):
     samples = []
     with open(trainset_path) as f:
         for json_path in tqdm(f):
-            json_path = json_path.replace('/home/riggi/Data/MLData/MLDataset_cleaned', os.path.join(os.path.abspath(os.getcwd())))
+            json_path = json_path.replace('/home/riggi/Data/MLData', os.path.join(os.path.abspath(os.getcwd())))
             json_path = os.path.normpath(json_path).strip()
             with open(json_path, 'r') as label_json:
                 label = json.load(label_json)
@@ -115,8 +115,8 @@ def make_annotations(samples, split, incremental_id):
             incremental_id.update({'obj': 1})
 
         incremental_id.update({'img': 1})
-    with open(os.path.join(args.dir, 'annotations', split), 'w') as out:
-        print(f'Dumping data in file annotations/{split}')
+    with open(os.path.join(args.dir, f'{split}_annotations.json'), 'w') as out:
+        print(f'Dumping data in file {split}_annotations.json')
         json.dump(coco_samples, out, indent=2, cls=NpEncoder)
 
 def main(args):
