@@ -5,6 +5,7 @@ Converts FITS mask data in [COCO format](https://cocodataset.org/#format-data) a
 ## Args
 - `-m`, Path of file that lists all mask file paths (trainset.dat)
 - `-d` Destination directory for converted data (default: coco)
+- `-c` Contrast value for conversion from FITS to PNG (default: 0.15)
 
 ## Usage
 
