@@ -52,6 +52,7 @@ def train_val_split(trainset_path, train_ratio=0.8):
 def make_img_dir(entries, split):
     '''Copies images into train or val folder'''
     os.makedirs(os.path.join(args.dir, split), exist_ok=True)
+    print('Converting images to PNG...')
     for line in entries:
         img_name = line['img'].split('\\')[-1] # take image name
         img_name = img_name.replace('.fits', '.png')
