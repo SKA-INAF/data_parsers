@@ -131,8 +131,10 @@ def make_annotations(samples, split, incremental_id):
             incremental_id.update({'obj': 1})
 
         incremental_id.update({'img': 1})
-    with open(os.path.join(args.dir, f'{split}_annotations.json'), 'w') as out:
-        print(f'Dumping data in file {split}_annotations.json')
+        
+    os.makedirs(os.path.join(args.dir, 'annotations'), exist_ok=True)
+    with open(os.path.join(args.dir, 'annotations', f'{split}.json'), 'w') as out:
+        print(f'Dumping data in file {split}.json')
         json.dump(coco_samples, out, indent=2, cls=NpEncoder)
 
 def main(args):
