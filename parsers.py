@@ -30,10 +30,9 @@ class DefaultParser(ABC):
     def read_samples(self, trainset_path):
         '''trainset.dat file parsing to get dataset samples'''
         samples = []
-        print(f'Reading JSON from {trainset_path}')
         with open(trainset_path) as f:
             for json_path in tqdm(f):
-                json_path = json_path.replace('/home/riggi/Data/MLData/MLDataset_cleaned', os.path.join(os.path.abspath(os.getcwd())))
+                json_path = json_path.replace('/home/riggi/Data/MLData', os.path.abspath(os.pardir))
                 json_path = os.path.normpath(json_path).strip()
                 with open(json_path, 'r') as label_json:
                     label = json.load(label_json)
@@ -97,8 +96,7 @@ class COCOParser(DefaultParser):
     def make_img_dir(self, dst_dir, entries, split):
         '''Copies images into train or val folder'''
         os.makedirs(os.path.join(dst_dir, split), exist_ok=True)
-        print('Converting images to PNG...')
-        for line in entries:
+        for line in tqdm(entries):
             img_name = line['img'].split('\\')[-1] # take image name
             img_name = img_name.replace('.fits', '.png')
             sample = line['img'].split('\\')[-3] # take sample name
@@ -163,27 +161,30 @@ class COCOParser(DefaultParser):
 class YOLOParser(DefaultParser):
 
     def __init__(self, contrast):
-        super(YOLOParser, self)
+        super(YOLOParser, self).__init__()
         self.contrast = contrast
 
     def make_img_dir(self, dst_dir, entries, split):
         '''Copies images into train or val folder'''
-        os.makedirs(os.path.join(dst_dir, split), exist_ok=True)
+        image_dir = os.path.join(dst_dir, 'images', split)
+        os.makedirs(image_dir, exist_ok=True)
+
         with open(f'{split}.txt', 'w') as txt:
-            for line in entries:
+            for line in tqdm(entries):
                 img_name = line['img'].split('\\')[-1] # take image name
                 img_name = img_name.replace('.fits', '.png')
                 sample = line['img'].split('\\')[-3] # take sample name
-                dst_path = os.path.join(dst_dir, split, f"{sample}_{img_name}")
+                dst_path = os.path.join(image_dir, f"{sample}_{img_name}")
                 line['filename'] = f'{sample}_{img_name}'
                 txt.write(dst_path + '\n')
                 self.fits_to_png(line['img'], dst_path, contrast=self.contrast)
 
-    def make_annotations(self, samples, split, incremental_id, dst_dir=None):
+    def make_annotations(self, dst_dir, samples, split, incremental_id):
         '''Creates the JSON COCO annotations to be stored'''
 
-        dst_dir = os.path.join('data', 'labels', split)
+        dst_dir = os.path.join(dst_dir, 'labels', split)
         os.makedirs(dst_dir, exist_ok=True)
+
         for line in tqdm(samples):
 
             dst_path = os.path.join(dst_dir, line['filename'].replace('.png', '.txt'))
@@ -209,14 +210,15 @@ class YOLOParser(DefaultParser):
 
                 incremental_id.update({'img': 1})
 
-    def make_names_file(self):
-        with open('data/radiogalaxy.names', 'w') as out:
+    def make_data_file(self, dst_dir):
+        data_file = os.path.join(dst_dir, 'radiogalaxy.yaml')
+        with open(data_file, 'w') as out:
+            out.write('# Number of classes')
+            out.write(f'\nnc: {len(self.CLASSES)}\n')
+            out.write('\n# Train and val directories')
+            out.write(f'\ntrain: data/images/train/')
+            out.write(f'\nval: data/images/val/')
+            out.write(f'\nnames: [ ')
             for name in self.CLASSES:
-                out.write(name + '\n')
-
-    def make_data_file(self):
-        with open('data/radiogalaxy.data', 'w') as out:
-            out.write(f'classes={len(self.CLASSES)}')
-            out.write(f'\ntrain=data/train.txt')
-            out.write(f'\nnames=data/radiogalaxy.names')
-            out.write(f'\nbackup=./backup')
+                out.write(f'\'{name}\', ')
+            out.write(f']')
