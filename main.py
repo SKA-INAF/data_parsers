@@ -24,11 +24,11 @@ def main(args):
     subsets = {'train': train_samples, 'val': val_samples}
     incremental_id = Counter({'img': 0, 'obj': 0})
 
-    for name, split in subsets.items():
-        print(f'Making {name} image directory')
-        parser.make_img_dir(output_dir, split, name)
-        print(f'Making {name} annotation directory')
-        parser.make_annotations(output_dir, split, name, incremental_id)
+    for split, samples in subsets.items():
+        print(f'Making {split} image directory')
+        parser.make_img_dir(output_dir, samples, split)
+        print(f'Making {split} annotation directory')
+        parser.make_annotations(samples, split, incremental_id, output_dir)
 
     if args.parser == 'yolo':
         print('Creating data file...')
@@ -41,7 +41,7 @@ if __name__ == '__main__':
     parser.add_argument("-m", "--masks", default="trainset.dat", help="Path of file that lists all mask file paths")
     parser.add_argument("-o", "--out_dir", default="data/", help="Destination directory for converted data")
     parser.add_argument("-c", "--contrast", default=0.15, help="Contrast value for conversion to PNG")
-    parser.add_argument("-p", "--parser", default='yolo', help="Type of parser")
+    parser.add_argument("-p", "--parser", default='coco', help="Type of parser")
 
     args = parser.parse_args()
     main(args)

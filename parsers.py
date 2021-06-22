@@ -118,7 +118,7 @@ class COCOParser(DefaultParser):
         for line in tqdm(samples):
 
             w, h = fits.getdata(line['img']).shape
-            image = {'id': incremental_id['img'], 'width': w, 'height': h, 'file_name': line['filename'], 'annotations': [] }
+            image = {'id': incremental_id['img'], 'width': w, 'height': h, 'file_name': line['filename']}
             coco_samples['images'].append(image)
 
             for obj in line['objs']:
@@ -145,7 +145,7 @@ class COCOParser(DefaultParser):
                     'iscrowd': 0
                 }
 
-                image['annotations'].append(annotation)
+                coco_samples['annotations'].append(annotation)
 
                 incremental_id.update({'obj': 1})
 
