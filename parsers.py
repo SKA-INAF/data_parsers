@@ -133,15 +133,17 @@ class COCOParser(DefaultParser):
                 # Flatten the array
                 poly = [p for x in poly for p in x]
 
-                area = (np.max(x_points) - np.min(x_points)) * (np.max(y_points) - np.min(y_points))
+                x0, y0, x1, y1 = np.min(x_points), np.min(y_points), np.max(x_points), np.max(y_points) 
+                w, h = x1 - x0, y1 - y0 
+                area = w * h
                 
                 annotation = {
                     'id': incremental_id['obj'], 
                     'category_id': self.CLASSES[obj['class']],
                     'image_id': incremental_id['img'], 
                     'segmentation': [poly],
-                    'area': area, 
-                    "bbox": [np.min(x_points), np.min(y_points), np.max(x_points), np.max(y_points)],
+                    'area': area,
+                    "bbox": [x0, y0, w, h],
                     'iscrowd': 0
                 }
 
