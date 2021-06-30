@@ -37,7 +37,7 @@ class DefaultParser(ABC):
                 with open(json_path, 'r') as label_json:
                     label = json.load(label_json)
                     # replacing relative path with the absolute one
-                    label['img'] = label['img'].replace('..', '\\'.join(json_path.split('\\')[:-2]))
+                    label['img'] = label['img'].replace('..', os.sep.join(json_path.split(os.sep)[:-2]))
                     label['img'] = os.path.normpath(label['img'])
                     samples.append(label)
 
@@ -97,9 +97,9 @@ class COCOParser(DefaultParser):
         '''Copies images into train or val folder'''
         os.makedirs(os.path.join(dst_dir, split), exist_ok=True)
         for line in tqdm(entries):
-            img_name = line['img'].split('\\')[-1] # take image name
+            img_name = line['img'].split(os.sep)[-1] # take image name
             img_name = img_name.replace('.fits', '.png')
-            sample = line['img'].split('\\')[-3] # take sample name
+            sample = line['img'].split(os.sep)[-3] # take sample name
             dst_path = os.path.join(dst_dir, split, f"{sample}_{img_name}")
             line['filename'] = f'{sample}_{img_name}'
             self.fits_to_png(line['img'], dst_path, contrast=self.contrast)
@@ -126,7 +126,7 @@ class COCOParser(DefaultParser):
                     # probably for misannotation, the class is missing in some samples, which will be skipped 
                     continue
                 # replaces the last two steps of the path with the steps to reach the mask file
-                mask_path = os.path.join('\\'.join(line['img'].split('\\')[:-2]), 'masks', obj['mask'])
+                mask_path = os.path.join(os.sep.join(line['img'].split(os.sep)[:-2]), 'masks', obj['mask'])
                 x_points, y_points = self.get_mask_coords(mask_path)
 
                 poly = [(x, y) for x, y in zip(x_points, y_points)]
@@ -173,9 +173,9 @@ class YOLOParser(DefaultParser):
 
         with open(f'{split}.txt', 'w') as txt:
             for line in tqdm(entries):
-                img_name = line['img'].split('\\')[-1] # take image name
+                img_name = line['img'].split(os.sep)[-1] # take image name
                 img_name = img_name.replace('.fits', '.png')
-                sample = line['img'].split('\\')[-3] # take sample name
+                sample = line['img'].split(os.sep)[-3] # take sample name
                 dst_path = os.path.join(image_dir, f"{sample}_{img_name}")
                 line['filename'] = f'{sample}_{img_name}'
                 txt.write(dst_path + '\n')
@@ -198,7 +198,7 @@ class YOLOParser(DefaultParser):
                         # probably for misannotation, the class is missing in some samples, which will be skipped 
                         continue
                     # replaces the last two steps of the path with the steps to reach the mask file
-                    mask_path = os.path.join('\\'.join(line['img'].split('\\')[:-2]), 'masks', obj['mask'])
+                    mask_path = os.path.join(os.sep.join(line['img'].split(os.sep)[:-2]), 'masks', obj['mask'])
                     x_points, y_points = self.get_mask_coords(mask_path)
 
                     x_center = (np.max(x_points) + np.min(x_points)) / 2
