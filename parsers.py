@@ -133,6 +133,15 @@ class COCOParser(DefaultParser):
                 # Flatten the array
                 poly = [p for x in poly for p in x]
 
+                if len(poly) < 4:
+                    # Eliminates annotations with segmentation masks with only 2 coordinates,
+                    # which bugs the coco API
+                    continue
+                    # with open(f'{split}_to_del.txt', 'a') as td:
+                    #     id = image['id']
+                    #     filename = image['file_name']
+                    #     td.write(f'ID: {id}\tfile: {filename}\tlen: {len(poly)}\n objs: {len(line["objs"])}')
+
                 x0, y0, x1, y1 = np.min(x_points), np.min(y_points), np.max(x_points), np.max(y_points) 
                 w, h = x1 - x0, y1 - y0 
                 area = w * h
