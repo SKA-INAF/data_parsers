@@ -20,8 +20,12 @@ def main(args):
     mask_file = os.path.normpath(mask_file)
     samples = parser.read_samples(mask_file)
 
-    train_samples, val_samples = parser.train_val_split(samples)
-    subsets = {'train': train_samples, 'val': val_samples}
+    train_samples, val_samples, test_samples = parser.train_val_split(samples)
+    subsets = {
+        'train': train_samples,
+        'val': val_samples,
+        'test': test_samples
+    }
     incremental_id = Counter({'img': 0, 'obj': 0})
 
     for split, samples in subsets.items():

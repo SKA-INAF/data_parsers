@@ -43,15 +43,19 @@ class DefaultParser(ABC):
 
             return samples
 
-    def train_val_split(self, samples, train_ratio=0.8):
+    def train_val_split(self, samples, val_ratio=0.1, test_ratio=0.005):
         '''trainset.dat file parsing to get a random train-val split'''
 
+        
         random.shuffle(samples)
-        sep = math.floor(len(samples) * train_ratio)
-        train_entries = samples[:sep]
-        val_entries = samples[sep:]
+        test_sep = math.floor(len(samples) * test_ratio)
+        val_sep = math.floor(len(samples) * val_ratio)
+        assert (len(samples) / test_sep + val_sep) > 0.8, f'Less than 80% of data for training'
+        val_entries = samples[ : val_sep]
+        test_entries = samples[val_sep : val_sep + test_sep ]
+        train_entries = samples[val_sep + test_sep : ]
 
-        return train_entries, val_entries
+        return train_entries, val_entries, test_entries
 
     @abstractmethod
     def make_img_dir(entries, split):
