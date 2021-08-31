@@ -121,7 +121,7 @@ class COCOParser(DefaultParser):
 
         for line in tqdm(samples):
 
-            w, h = fits.getdata(line['img']).shape
+            h, w = fits.getdata(line['img']).shape
             image = {'id': incremental_id['img'], 'width': w, 'height': h, 'file_name': line['filename']}
             coco_samples['images'].append(image)
 
