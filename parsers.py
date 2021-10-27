@@ -1,3 +1,4 @@
+from genericpath import exists
 import random, json, os, math
 from astropy.io import fits
 import matplotlib.pyplot as plt
@@ -5,6 +6,7 @@ import numpy as np
 from tqdm import tqdm
 import torch
 import cv2
+from pathlib import Path
 from torchvision.utils import save_image
 from abc import ABC, abstractmethod
 
@@ -24,21 +26,26 @@ class NpEncoder(json.JSONEncoder):
 
 class DefaultParser(ABC):
 
-    def __init__(self):
+    def __init__(self, dst_dir, split):
         self.CLASSES = {'galaxy': 1, 'source': 2, 'sidelobe': 3}
+        self.dst_dir = dst_dir
+        self.split = split
 
     def read_samples(self, trainset_path):
         '''trainset.dat file parsing to get dataset samples'''
         samples = []
         with open(trainset_path) as f:
             for json_path in tqdm(f):
-                json_path = json_path.replace('/home/riggi/Data/MLData', os.path.abspath(os.pardir))
-                json_path = os.path.normpath(json_path).strip()
-                with open(json_path, 'r') as label_json:
+                # json_path = json_path.replace('/home/riggi/Data/MLData', os.path.abspath(os.pardir))
+                # json_path = os.path.normpath(json_path).strip()
+                json_rel_path = Path(json_path.strip())
+                abs_json_path = trainset_path.parent / json_rel_path
+                with open(abs_json_path, 'r') as label_json:
                     label = json.load(label_json)
                     # replacing relative path with the absolute one
-                    label['img'] = label['img'].replace('..', os.sep.join(json_path.split(os.sep)[:-2]))
-                    label['img'] = os.path.normpath(label['img'])
+                    label['img'] = trainset_path.parent / Path('imgs') / label['img']
+                    # label['img'] = label['img'].replace('..', os.sep.join(json_path.split(os.sep)[:-2]))
+                    # label['img'] = os.path.normpath(label['img'])
                     samples.append(label)
 
             return samples
@@ -80,6 +87,9 @@ class DefaultParser(ABC):
         x_points = []
         y_points = []
 
+        if not contours:
+            return None, None
+
         for xy in contours[0]:
             x_points.append(xy[0][0])
             y_points.append(xy[0][1])
@@ -93,21 +103,29 @@ class DefaultParser(ABC):
 
 class COCOParser(DefaultParser):
 
-    def __init__(self, contrast):
-        super(COCOParser, self).__init__()
+    def __init__(self, contrast, dst_dir, split):
+        super(COCOParser, self).__init__(dst_dir, split)
         self.contrast = contrast
+        self.error_file = Path(f'{self.split}_skipped.txt')
+        if self.error_file.exists():
+            self.error_file.unlink()
 
     def make_img_dir(self, dst_dir, entries, split):
         '''Copies images into train or val folder'''
-        os.makedirs(os.path.join(dst_dir, split), exist_ok=True)
+        split_path = dst_dir / Path(split)
+        split_path.mkdir(exist_ok=True)
+        dst_folder = split_path #/  Path('imgs')
         for line in tqdm(entries):
-            img_name = line['img'].split(os.sep)[-1] # take image name
+            img_name = line['img'].name # take image name
             img_name = img_name.replace('.fits', '.png')
-            sample = line['img'].split(os.sep)[-3] # take sample name
-            dst_path = os.path.join(dst_dir, split, f"{sample}_{img_name}")
-            line['filename'] = f'{sample}_{img_name}'
+            dst_folder.mkdir(exist_ok=True)
+            dst_path = dst_folder / img_name
+            line['filename'] = img_name
             self.fits_to_png(line['img'], dst_path, contrast=self.contrast)
 
+    def log_error(self, msg):
+        with open(self.error_file, 'a') as td:
+            td.write(msg + '\n')
 
     def make_annotations(self, samples, split, incremental_id, dst_dir):
         '''Creates the JSON COCO annotations to be stored'''
@@ -122,16 +140,22 @@ class COCOParser(DefaultParser):
         for line in tqdm(samples):
 
             h, w = fits.getdata(line['img']).shape
-            image = {'id': incremental_id['img'], 'width': w, 'height': h, 'file_name': line['filename']}
+            image = {'id': incremental_id['img'], 'width': w, 'height': h, 'file_name': line['img'].name.replace('.fits', '.png')} # file_name = sample1_galaxy0001.png
             coco_samples['images'].append(image)
 
             for obj in line['objs']:
                 if obj['class'] == '':
                     # probably for misannotation, the class is missing in some samples, which will be skipped 
+                    self.log_error(f'Object {obj["mask"]} has no class')
                     continue
                 # replaces the last two steps of the path with the steps to reach the mask file
-                mask_path = os.path.join(os.sep.join(line['img'].split(os.sep)[:-2]), 'masks', obj['mask'])
+                # mask_path = os.path.join(os.sep.join(line['img'].split(os.sep)[:-2]), 'masks', obj['mask'])
+                mask_path = line['img'].parent.parent / Path('masks') / obj['mask']
                 x_points, y_points = self.get_mask_coords(mask_path)
+
+                if not (x_points and y_points):
+                    self.log_error(f'Mask {mask_path} is empty')
+                    continue
 
                 poly = [(x, y) for x, y in zip(x_points, y_points)]
                 # Flatten the array
@@ -140,10 +164,10 @@ class COCOParser(DefaultParser):
                 if len(poly) <= 4:
                     # Eliminates annotations with segmentation masks with only 2 coordinates,
                     # which bugs the coco API
-                    with open(f'{split}_to_del.txt', 'a') as td:
-                        id = image['id']
-                        filename = image['file_name']
-                        td.write(f'ID: {id}\tfile: {filename}\tlen: {len(poly)}\t objs: {len(line["objs"])}\n')
+                    id = image['id']
+                    filename = image['file_name']
+                    msg = f'Invalid mask for file: {filename}\tlen: {len(poly)} (should be > 4)\t objs: {len(line["objs"])}'
+                    self.log_error(msg)
                     continue
 
                 x0, y0, x1, y1 = np.min(x_points), np.min(y_points), np.max(x_points), np.max(y_points) 
@@ -166,17 +190,23 @@ class COCOParser(DefaultParser):
 
             incremental_id.update({'img': 1})
 
+        return coco_samples
 
-        os.makedirs(os.path.join(dst_dir, 'annotations'), exist_ok=True)
-        with open(os.path.join(dst_dir, 'annotations', f'{split}.json'), 'w') as out:
+
+
+    def dump_annotations(self, dst_dir, split, coco_samples):
+        annot_dst_dir = dst_dir / Path('annotations')
+        annot_dst_dir.mkdir(exist_ok=True)
+        annot_dst_path = annot_dst_dir / Path(f'{split}.json')
+        with open(annot_dst_path, 'w') as out:
             print(f'Dumping data in file {split}.json')
             json.dump(coco_samples, out, indent=2, cls=NpEncoder)
 
 
 class YOLOParser(DefaultParser):
 
-    def __init__(self, contrast):
-        super(YOLOParser, self).__init__()
+    def __init__(self, contrast, dst_dir, split):
+        super(YOLOParser, self).__init__(dst_dir, split)
         self.contrast = contrast
 
     def make_img_dir(self, dst_dir, entries, split):

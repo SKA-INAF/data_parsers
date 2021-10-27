@@ -1,38 +1,44 @@
+from genericpath import exists
 from parsers import COCOParser, YOLOParser
 import os, argparse
+from pathlib import Path
 from collections import Counter
 
 def main(args):
 
+    parent_dir = Path().resolve().parent
+    data_dir = parent_dir / Path(args.data_dir) / Path(args.split)
+    output_dir = Path(args.out_dir)
+    split_dir = Path(args.split)
+
+    output_dir.mkdir(exist_ok=True)
+
     if args.parser == 'coco':
-        parser = COCOParser(args.contrast)
+        parser = COCOParser(args.contrast, output_dir, split_dir)
     elif args.parser == 'yolo':
-        parser = YOLOParser(args.contrast)
+        parser = YOLOParser(args.contrast, output_dir, split_dir)
     else:
         raise Exception(f'Parser of type {args.parser} not supported')
 
-    output_dir = os.path.join(os.path.abspath(os.pardir), args.data_dir, args.out_dir)
-    output_dir = os.path.normpath(output_dir)
-    os.makedirs(output_dir, exist_ok=True)
+    
 
     print(f'Reading samples from JSON {args.masks}...')
-    mask_file = os.path.join(os.path.abspath(os.pardir), args.data_dir, args.masks)
-    mask_file = os.path.normpath(mask_file)
+    mask_file = data_dir / Path(args.masks)
     samples = parser.read_samples(mask_file)
 
-    train_samples, val_samples, test_samples = parser.train_val_split(samples)
-    subsets = {
-        'train': train_samples,
-        'val': val_samples,
-        'test': test_samples
-    }
+    # train_samples, val_samples, test_samples = parser.train_val_split(samples)
+    # subsets = {
+    #     'train': train_samples,
+    #     'val': val_samples,
+    #     'test': test_samples
+    # }
     incremental_id = Counter({'img': 0, 'obj': 0})
 
-    for split, samples in subsets.items():
-        print(f'Making {split} image directory')
-        parser.make_img_dir(output_dir, samples, split)
-        print(f'Making {split} annotation directory')
-        parser.make_annotations(samples, split, incremental_id, output_dir)
+    print(f'Making {args.split} image directory')
+    # parser.make_img_dir(output_dir, samples, args.split)
+    print(f'Making {args.split} annotation directory')
+    coco_samples = parser.make_annotations(samples, args.split, incremental_id, output_dir)
+    parser.dump_annotations(output_dir, split_dir, coco_samples)
 
     if args.parser == 'yolo':
         print('Creating data file...')
@@ -46,6 +52,7 @@ if __name__ == '__main__':
     parser.add_argument("-o", "--out_dir", default="data/", help="Destination directory for converted data")
     parser.add_argument("-c", "--contrast", default=0.15, help="Contrast value for conversion to PNG")
     parser.add_argument("-p", "--parser", default='coco', help="Type of parser")
+    parser.add_argument("-s", "--split", choices=['train', 'val', 'test'], help="Split to parse")
 
     args = parser.parse_args()
     main(args)
