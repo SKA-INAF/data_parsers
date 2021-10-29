@@ -1,4 +1,3 @@
-from genericpath import exists
 from parsers import COCOParser, YOLOParser
 import os, argparse
 from pathlib import Path
@@ -26,12 +25,6 @@ def main(args):
     mask_file = data_dir / Path(args.masks)
     samples = parser.read_samples(mask_file)
 
-    # train_samples, val_samples, test_samples = parser.train_val_split(samples)
-    # subsets = {
-    #     'train': train_samples,
-    #     'val': val_samples,
-    #     'test': test_samples
-    # }
     incremental_id = Counter({'img': 0, 'obj': 0})
 
     print(f'Making {args.split} image directory')
