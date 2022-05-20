@@ -8,7 +8,7 @@ def main(args):
 
     parent_dir = Path().resolve().parent
     data_dir = parent_dir / Path(args.data_dir) / Path(args.split)
-    output_dir = Path(args.out_dir)
+    output_dir = 'parsed' / Path(args.out_dir)
     split_dir = Path(args.split)
 
     output_dir.mkdir(exist_ok=True)
@@ -26,19 +26,14 @@ def main(args):
     mask_file = data_dir / Path(args.masks)
     samples = parser.read_samples(mask_file)
 
-    # train_samples, val_samples, test_samples = parser.train_val_split(samples)
-    # subsets = {
-    #     'train': train_samples,
-    #     'val': val_samples,
-    #     'test': test_samples
-    # }
     incremental_id = Counter({'img': 0, 'obj': 0})
 
     print(f'Making {args.split} image directory')
-    # parser.make_img_dir(output_dir, samples, args.split)
+    parser.make_img_dir(output_dir, samples, args.split)
     print(f'Making {args.split} annotation directory')
-    coco_samples = parser.make_annotations(samples, args.split, incremental_id, output_dir)
-    parser.dump_annotations(output_dir, split_dir, coco_samples)
+    samples = parser.make_annotations(output_dir, samples, args.split, incremental_id)
+    if args.parser == 'coco':
+        parser.dump_annotations(output_dir, split_dir, samples)
 
     if args.parser == 'yolo':
         print('Creating data file...')
