@@ -1,4 +1,3 @@
-from genericpath import exists
 from parsers import COCOParser, YOLOParser
 import os, argparse
 from pathlib import Path

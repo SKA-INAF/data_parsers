@@ -1,4 +1,3 @@
-from genericpath import exists
 import random, json, os, math
 from astropy.io import fits
 import matplotlib.pyplot as plt
@@ -39,33 +38,15 @@ class DefaultParser(ABC):
         samples = []
         with open(trainset_path) as f:
             for json_path in tqdm(f):
-                # json_path = json_path.replace('/home/riggi/Data/MLData', os.path.abspath(os.pardir))
-                # json_path = os.path.normpath(json_path).strip()
                 json_rel_path = Path(json_path.strip())
                 abs_json_path = trainset_path.parent / json_rel_path
                 with open(abs_json_path, 'r') as label_json:
                     label = json.load(label_json)
                     # replacing relative path with the absolute one
                     label['img'] = trainset_path.parent / Path('imgs') / label['img']
-                    # label['img'] = label['img'].replace('..', os.sep.join(json_path.split(os.sep)[:-2]))
-                    # label['img'] = os.path.normpath(label['img'])
                     samples.append(label)
 
             return samples
-
-    def train_val_split(self, samples, val_ratio=0.1, test_ratio=0.005):
-        '''trainset.dat file parsing to get a random train-val split'''
-
-        
-        random.shuffle(samples)
-        test_sep = math.floor(len(samples) * test_ratio)
-        val_sep = math.floor(len(samples) * val_ratio)
-        assert (len(samples) / test_sep + val_sep) > 0.8, f'Less than 80% of data for training'
-        val_entries = samples[ : val_sep]
-        test_entries = samples[val_sep : val_sep + test_sep ]
-        train_entries = samples[val_sep + test_sep : ]
-
-        return train_entries, val_entries, test_entries
 
     @abstractmethod
     def make_img_dir(entries, split):
@@ -86,6 +67,10 @@ class DefaultParser(ABC):
         img = (img-min)/(max-min)
 
         save_image(torch.from_numpy(img), dst_path)
+
+    def log_error(self, msg):
+        with open(self.error_file, 'a') as td:
+            td.write(msg + '\n')
 
     def get_mask_coords(self, mask_path):
         '''Extracts coordinates from the mask image'''
@@ -132,6 +117,8 @@ class COCOParser(DefaultParser):
             dst_path = dst_folder / img_name
             line['filename'] = img_name
             self.fits_to_png(line['img'], dst_path, contrast=self.contrast)
+
+
 
     def make_annotations(self, samples, split, incremental_id, dst_dir):
         '''Creates the JSON COCO annotations to be stored'''
